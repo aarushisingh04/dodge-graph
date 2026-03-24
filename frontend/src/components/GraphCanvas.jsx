@@ -194,19 +194,19 @@ export default function GraphCanvas({
       const size = NODE_SIZES[node.type] || 5
       const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node.id)
       const isChatHighlighted = highlightNodes.has(node.id)
-      const color = node.color || '#7e8394'
+      const color = TYPE_COLORS[node.type] || node.color || '#7e8394'
 
       ctx.beginPath()
-      ctx.arc(node.x, node.y, size + 2, 0, 2 * Math.PI)
-      ctx.fillStyle = isHighlighted ? `${color}22` : `${color}14`
+      ctx.arc(node.x, node.y, size + 1.6, 0, 2 * Math.PI)
+      ctx.fillStyle = isHighlighted ? `${color}40` : `${color}24`
       ctx.fill()
 
       ctx.beginPath()
       ctx.arc(node.x, node.y, size, 0, 2 * Math.PI)
-      ctx.fillStyle = isChatHighlighted ? CHAT_HIGHLIGHT_COLOR : isHighlighted ? `${color}2d` : `${color}18`
+      ctx.fillStyle = isChatHighlighted ? CHAT_HIGHLIGHT_COLOR : isHighlighted ? color : `${color}66`
       ctx.fill()
-      ctx.lineWidth = isChatHighlighted ? 2.5 : 1.35
-      ctx.strokeStyle = isChatHighlighted ? '#ffffff' : isHighlighted ? color : `${color}70`
+      ctx.lineWidth = isChatHighlighted ? 2.4 : 1
+      ctx.strokeStyle = isChatHighlighted ? '#ffffff' : isHighlighted ? `${color}cc` : `${color}8c`
       ctx.stroke()
 
       if (isChatHighlighted) {

@@ -121,14 +121,16 @@ export default function ChatPanel({ suggestions, onHighlightNodes, nodeLookup })
     <div className='chat-panel'>
       <div className='chat-header'>
         <div>
-          <div className='chat-header-title'>Chat with Graph</div>
-          <div className='chat-header-subtitle'>Order to Cash</div>
+          <div className='chat-header-title'>Dodge AI</div>
+          <div className='chat-header-subtitle chat-header-status'>
+            <span className='status-dot' />
+            Active
+          </div>
         </div>
         <div className='chat-header-actions'>
           <button type='button' className='chat-download-btn' onClick={downloadChatHistory}>
             Download
           </button>
-          <div className='chat-status-badge'>Live</div>
         </div>
       </div>
 
@@ -159,15 +161,10 @@ export default function ChatPanel({ suggestions, onHighlightNodes, nodeLookup })
         ))}
       </div>
 
-      <div className='chat-footer-note'>
-        <span className='status-dot' />
-        Dodge AI is awaiting instructions
-      </div>
-
       <div className='chat-input-row'>
-        <textarea
+        <input
           className='chat-input'
-          rows={2}
+          type='text'
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
