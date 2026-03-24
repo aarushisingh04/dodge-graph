@@ -243,17 +243,17 @@ def build_graph() -> nx.DiGraph:
 
 def graph_to_json(graph: nx.DiGraph) -> dict:
     type_colors = {
-        "SalesOrder": "#2563eb",
-        "SalesOrderItem": "#7dd3fc",
-        "Delivery": "#16a34a",
-        "DeliveryItem": "#86efac",
-        "BillingDoc": "#111827",
-        "BillingItem": "#94a3b8",
-        "JournalEntry": "#f97316",
-        "Payment": "#facc15",
-        "Customer": "#dc2626",
-        "Product": "#7c3aed",
-        "Plant": "#0f766e",
+        "SalesOrder": "#93c5fd",
+        "SalesOrderItem": "#dbeafe",
+        "Delivery": "#86efac",
+        "DeliveryItem": "#dcfce7",
+        "BillingDoc": "#9ca3af",
+        "BillingItem": "#e5e7eb",
+        "JournalEntry": "#fdba74",
+        "Payment": "#fde68a",
+        "Customer": "#fca5a5",
+        "Product": "#c4b5fd",
+        "Plant": "#99f6e4",
     }
 
     nodes = []
