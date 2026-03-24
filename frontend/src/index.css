@@ -58,21 +58,21 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  padding: 18px;
-  gap: 16px;
+  padding: 14px;
+  gap: 12px;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 28px;
+  padding: 14px 22px;
   margin: 0 10px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 243, 255, 0.62)),
     rgba(251, 249, 255, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.96);
-  border-radius: 28px;
+  border-radius: 22px;
   backdrop-filter: blur(22px) saturate(120%);
   box-shadow:
     0 10px 18px rgba(255, 255, 255, 0.34),
@@ -89,8 +89,8 @@ body {
   content: '';
   position: absolute;
   inset: 1px 1px auto 1px;
-  height: 52%;
-  border-radius: 26px 26px 18px 18px;
+  height: 46%;
+  border-radius: 20px 20px 14px 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.08) 60%, rgba(255, 255, 255, 0));
   pointer-events: none;
 }
@@ -98,18 +98,18 @@ body {
 .app-header::after {
   content: '';
   position: absolute;
-  right: 42px;
-  top: -26px;
-  width: 180px;
-  height: 120px;
+  right: 34px;
+  top: -22px;
+  width: 132px;
+  height: 88px;
   border-radius: 999px;
   background: radial-gradient(circle, rgba(202, 196, 233, 0.18), rgba(202, 196, 233, 0) 72%);
   pointer-events: none;
 }
 
 .brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 8px;
   object-fit: cover;
   display: block;
@@ -118,14 +118,14 @@ body {
 .title-group {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .eyebrow {
   position: relative;
   padding-right: 14px;
   color: #8c94a7;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -135,14 +135,14 @@ body {
   top: 50%;
   right: 0;
   width: 1px;
-  height: 22px;
+  height: 18px;
   background: var(--line);
   transform: translateY(-50%);
 }
 
 .app-header h1 {
   font-family: 'Montserrat', 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.03em;
 }
@@ -1081,22 +1081,30 @@ body {
 
 .chat-input-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
   padding: 0 18px 18px;
 }
 
 .chat-input {
-  min-height: 126px;
-  padding: 16px;
-  border-radius: 22px;
+  flex: 1;
+  height: 46px;
+  min-height: 46px;
+  max-height: 46px;
+  padding: 11px 14px;
+  border-radius: 16px;
   border: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 243, 255, 0.46)),
     rgba(255, 255, 255, 0.84);
   color: var(--text);
   font: inherit;
+  font-size: 14px;
+  line-height: 1.35;
   resize: none;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   outline: none;
   backdrop-filter: blur(16px);
   box-shadow:
@@ -1122,9 +1130,9 @@ body {
 
 .send-btn {
   appearance: none;
-  align-self: flex-end;
-  min-width: 96px;
-  height: 44px;
+  flex: 0 0 auto;
+  min-width: 104px;
+  height: 46px;
   padding: 0 18px;
   border: 0;
   border-radius: 16px;
@@ -1206,6 +1214,14 @@ body {
 
   .chat-panel {
     width: 100%;
+  }
+
+  .chat-input-row {
+    align-items: stretch;
+  }
+
+  .chat-input {
+    white-space: normal;
   }
 
   .node-detail {

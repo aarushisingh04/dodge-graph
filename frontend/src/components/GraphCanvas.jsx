@@ -3,17 +3,17 @@ import ForceGraph2D from 'react-force-graph-2d'
 import NodeDetail from './NodeDetail.jsx'
 
 const TYPE_COLORS = {
-  SalesOrder: '#5f57d8',
-  SalesOrderItem: '#897ff0',
-  Delivery: '#4f87d9',
-  DeliveryItem: '#82ace8',
-  BillingDoc: '#283041',
-  BillingItem: '#68758b',
-  JournalEntry: '#6b52d9',
-  Payment: '#b8aaf5',
-  Customer: '#374255',
-  Product: '#7a6ce6',
-  Plant: '#9ca6ba'
+  SalesOrder: '#2563eb',
+  SalesOrderItem: '#7dd3fc',
+  Delivery: '#16a34a',
+  DeliveryItem: '#86efac',
+  BillingDoc: '#111827',
+  BillingItem: '#94a3b8',
+  JournalEntry: '#f97316',
+  Payment: '#facc15',
+  Customer: '#dc2626',
+  Product: '#7c3aed',
+  Plant: '#0f766e'
 }
 
 const NODE_SIZES = {
