@@ -1,5 +1,4 @@
 .env
-backend/o2c.db
 backend/venv/
 frontend/node_modules/
 node_modules/
