@@ -1,0 +1,9 @@
+.env
+backend/o2c.db
+backend/venv/
+frontend/node_modules/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+dist/
