@@ -3,6 +3,8 @@ import ChatPanel from './components/ChatPanel.jsx'
 import GraphCanvas from './components/GraphCanvas.jsx'
 import logoSrc from '../../dodge_logo.jpg'
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
 const SUGGESTIONS = [
   'Which products are associated with the highest number of billing documents?',
   'Trace the full flow of billing document 90504259',
@@ -35,7 +37,7 @@ export default function App() {
   )
 
   useEffect(() => {
-    fetch('/api/graph')
+    fetch(`${API_BASE}/api/graph`)
       .then((response) => response.json())
       .then((data) => {
         setGraphData(data)
@@ -50,7 +52,7 @@ export default function App() {
 
   const handleNodeClick = useCallback((node) => {
     setSelectedNode(node)
-    fetch(`/api/node/${encodeURIComponent(node.id)}`)
+    fetch(`${API_BASE}/api/node/${encodeURIComponent(node.id)}`)
       .then((response) => response.json())
       .then((detail) => {
         const connected = new Set([node.id, ...detail.connections.map((connection) => connection.id)])

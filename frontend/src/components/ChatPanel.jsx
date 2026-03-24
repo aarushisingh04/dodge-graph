@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import ChatMessage from './ChatMessage.jsx'
 import { extractNodeReferences } from '../lib/chatReferences.js'
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
 export default function ChatPanel({ suggestions, onHighlightNodes, nodeLookup }) {
   const [messages, setMessages] = useState([
     {
@@ -69,7 +71,7 @@ export default function ChatPanel({ suggestions, onHighlightNodes, nodeLookup })
     setLoading(true)
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: question, history })
