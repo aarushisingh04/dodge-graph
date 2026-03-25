@@ -1,449 +1,248 @@
 # sap o2c graph query system
 
-this repository contains my submission for the graph-based data modeling and query system assignment.
+graph-based data exploration and natural language querying over a sap order-to-cash dataset.
 
-the goal of the project was to take a fragmented sap order to cash dataset, unify it into a graph, and build a natural language interface that could answer business questions with responses grounded in the underlying data.
+live demo: https://dodge-graph.vercel.app/
 
-the result is a small full-stack system with:
+## what it does
 
-- a graph representation of the order to cash process
-- a graph visualization ui for exploration
-- an llm-powered chat interface for natural language querying
-- guardrails to keep the system within the provided dataset and domain
-
-## what i built
-
-the system supports the main assignment requirements:
-
-- graph construction from the dataset
-- graph visualization with node inspection and relationship exploration
-- relation-aware structural retraction for item-level detail
+**core requirements:**
+- graph construction from the dataset with typed nodes and edges
+- graph visualization with node inspection, relationship exploration, and relation-aware retraction
 - natural language querying through a chat interface
-- dynamic translation from user questions to structured sqlite queries
-- grounded answers generated from real query results
+- dynamic sql generation from user questions, executed against real data
+- grounded answers built from actual query results
 - off-topic rejection and domain guardrails
 
-in addition to the core requirements, i went deeper on a few areas that felt most valuable for this assignment:
-
-- conversation memory for follow-up analytical questions
+**bonus depth areas:**
+- conversation memory for multi-turn analytical follow-ups
 - deterministic flow tracing for trace-style prompts
-- chat-to-graph highlighting through explicit node references
+- chat-to-graph highlighting via explicit node references
+
+## stack
+
+| layer | choice |
+|---|---|
+| api | fastapi |
+| query store | sqlite |
+| graph engine | networkx |
+| llm | google gemini 1.5 flash (free tier) |
+| frontend | react + vite + react-force-graph-2d |
 
 ## architecture decisions
 
-the project is split into a backend and a frontend.
+the system has four clearly separated responsibilities:
 
-### backend
+| layer | role |
+|---|---|
+| sqlite | analytical execution. all business questions are answered by running sql against it. |
+| networkx | graph modeling and visualization. powers the frontend graph view, not used as a query engine. |
+| fastapi | thin boundary exposing graph data, node detail, stats, and chat endpoints. |
+| llm | translation layer. sits on top of sqlite, converts natural language to sql, then converts results to readable answers. |
 
-the backend is built with fastapi and handles:
-
-- dataset ingestion into sqlite
-- graph construction with networkx
-- graph and node detail apis
-- llm prompting for sql generation and answer generation
-- sql validation and execution
-- trace-specific routing
-- guardrails
-
-key files:
-
-- `backend/ingest.py`
-  ingests and normalizes the dataset into sqlite
-- `backend/graph.py`
-  builds the networkx graph from the relational data
-- `backend/main.py`
-  exposes the api endpoints for graph data, node detail, stats, and chat
-- `backend/llm.py`
-  contains the prompting and llm integration logic
-- `backend/query_engine.py`
-  validates and executes read-only sql
-- `backend/guardrails.py`
-  enforces domain restrictions
-- `backend/chat_features.py`
-  handles deterministic trace requests and result-to-graph reference extraction
-
-### frontend
-
-the frontend is built with react and vite and handles:
-
-- graph rendering with `react-force-graph-2d`
-- chat interaction
-- rendering result references from responses
-- graph highlighting and node focus
-
-key files:
-
-- `frontend/src/App.jsx`
-- `frontend/src/components/GraphCanvas.jsx`
-- `frontend/src/components/ChatPanel.jsx`
-- `frontend/src/components/ChatMessage.jsx`
-- `frontend/src/lib/chatReferences.js`
-
-### why i chose this architecture
-
-i wanted a design that was easy to reason about and appropriate for the scope of a take-home assignment.
-
-my decisions were guided by three things:
-
-- keep the data flow clear
-- keep the implementation small enough to move quickly
-- separate graph concerns from analytical query concerns
-
-the graph and the relational database serve different roles in the system:
-
-- sqlite is the analytical execution layer
-- networkx is the graph modeling and exploration layer
-- the llm sits on top of sqlite and translates business questions into queries
-
-that separation made the system easier to build, debug, and explain.
+keeping these responsibilities separate made each part easier to build, debug, and explain independently. it also made the system's failure modes more predictable: if a query is wrong, the problem is in the sql generation step, not tangled somewhere across layers.
 
 ## graph modeling decisions
 
-the graph is centered on the order to cash flow:
-
-`sales order -> delivery -> billing document -> journal entry -> payment`
-
-around that core flow, i modeled supporting entities such as:
-
-- customer
-- product
-- plant
-- line-item entities for orders, deliveries, and billing documents
+core flow: `sales order -> delivery -> billing document -> journal entry -> payment`
 
 ### node types
 
-- salesorder
-- salesorderitem
-- delivery
-- deliveryitem
-- billingdoc
-- billingitem
-- journalentry
-- payment
-- customer
-- product
-- plant
+| node | primary key |
+|---|---|
+| salesorder | salesorder |
+| salesorderitem | salesorder + salesorderitem |
+| delivery | deliverydocument |
+| deliveryitem | deliverydocument + deliverydocumentitem |
+| billingdoc | billingdocument |
+| billingitem | billingdocument + billingdocumentitem |
+| journalentry | accountingdocument |
+| payment | accountingdocument + accountingdocumentitem |
+| customer | businesspartner |
+| product | product |
+| plant | plant |
 
-### relationships
+### edge types
 
-the graph currently includes edges such as:
+| edge | type | meaning |
+|---|---|---|
+| `has_item` | structural | expandable item-level detail, collapsible per document |
+| `posted_to` | process-flow | billing doc to journal entry |
+| `settled_by` | process-flow | journal entry to payment |
+| `from_delivery` | process-flow | billing item back to delivery |
+| `fulfills` | process-flow | delivery item back to sales order |
+| `sold_to` | reference | sales order to customer |
+| `billed_to` | reference | billing doc to customer |
+| `uses_product` | reference | order item to product |
+| `ships_from` | reference | delivery item to plant |
+| `stored_at` | reference | product to plant |
 
-- `has_item`
-- `sold_to`
-- `uses_product`
-- `fulfills`
-- `ships_from`
-- `stored_at`
-- `from_delivery`
-- `posted_to`
-- `billed_to`
-- `settled_by`
+### why item-level nodes matter
 
-the edges are intentionally not all treated the same in the ui.
+modeling both document headers and item-level records was a deliberate choice. many useful business questions depend on item-level relationships:
 
-- structural edges such as `has_item` represent expandable item-level detail
-- process-flow edges such as `posted_to` and `settled_by` represent downstream business flow
-- reference edges such as `sold_to`, `billed_to`, `uses_product`, `ships_from`, and `stored_at` attach shared master data
+- top products by billing documents requires item-level product linkage
+- tracing order to delivery to billing requires item-level join paths
+- incomplete flow detection requires item-level presence checks
 
-### why i modeled it this way
+header-only modeling would lose all of that.
 
-the assignment was not just about loading tables into a graph. the important part was deciding what should become a node and what should become an edge.
+### how retraction works
 
-i chose to model both document headers and item-level records because many useful business questions depend on item-level relationships, especially product-related questions.
+the edge type distinction also drives the ui interaction model:
 
-for example:
+- **structural edges** (`has_item`) are the only ones collapsed on retraction. collapsing a document hides its item-level detail.
+- **reference nodes** (customer, product, plant) are never hidden when a branch retracts, because they are shared across multiple documents.
+- **process-flow edges** stay visible so the main o2c chain remains legible at any zoom level.
 
-- top products by billing documents
-- tracing from order to delivery to billing
-- identifying incomplete flows
+this keeps retraction predictable: collapsing a billing document hides its items without accidentally removing the customer node that other documents also point to.
 
-if i had only modeled header-level entities, a lot of that detail would have been lost.
+## database choice: sqlite
 
-that distinction also affects the graph interaction model.
+| factor | reasoning |
+|---|---|
+| scale | ~22k records, read-only, no concurrent writes |
+| infrastructure | zero setup, runs as a file, trivial to inspect during development |
+| llm compatibility | constrained query surface makes llm-generated sql more reliable and easier to validate |
+| tradeoff accepted | would not scale to production volumes or concurrent users, but that was not a requirement here |
 
-- the default retraction logic only collapses structural `has_item` branches
-- shared reference nodes such as customers, products, and plants are not hidden when one document branch is retracted
-- process-flow edges remain visible so the main order-to-cash path stays legible
+for a larger production system i would consider postgresql or a dedicated analytical store. for this assignment sqlite gave the best tradeoff between simplicity and usefulness.
 
-this keeps retraction predictable: collapsing a document hides its item-level granularity without accidentally removing shared entities or breaking the higher-level flow view.
+## why networkx
 
-## database choice
-
-i chose sqlite as the primary query store.
-
-### why sqlite
-
-- the dataset is local and relatively small
-- the queries are analytical and read-only
-- setup is simple and fast
-- it is easy to inspect and debug during development
-- it fits well with llm-generated sql in a constrained environment
-
-for this assignment, sqlite gave me the best tradeoff between simplicity and usefulness.
-
-i did not choose a larger analytical database because the scale did not justify the extra complexity.
-
-## why i used networkx for the graph
-
-the graph is built in memory with networkx because:
-
-- it is straightforward for constructing entity and relationship graphs
-- it keeps graph logic easy to inspect
-- it is enough for the size of this dataset
-- it works well for powering the frontend graph view
-
-if this were a larger production system, i would consider a dedicated graph database or a more scalable graph-serving layer. for this assignment, networkx was the most practical choice.
+| factor | reasoning |
+|---|---|
+| construction | straightforward api for typed nodes and edges |
+| inspection | easy to query and debug during development |
+| scale fit | sufficient for this dataset size |
+| frontend fit | serializes cleanly to the node/link format react-force-graph-2d expects |
+| tradeoff accepted | would not scale to millions of nodes; a dedicated graph database would be needed at production scale |
 
 ## llm prompting strategy
 
-the llm integration is intentionally constrained rather than open-ended.
+### two-step design
 
-there are two main llm steps:
+every chat turn makes two separate llm calls:
 
-1. generate sql from a natural language question
-2. generate a final business-facing answer from the sql results
+**step 1: sql generation**
 
-### sql generation prompt
+| input | detail |
+|---|---|
+| schema | all allowed tables and columns |
+| join paths | explicit relationships between tables |
+| output format | must return `{"sql": "...", "explanation": "..."}` as json |
+| constraints | sqlite syntax only, no invented columns |
+| temperature | 0.1 to reduce hallucination on column and table names |
+| chat history | recent turns passed as context |
+| analytical context | previous sql, previous result columns, recently referenced entities |
 
-the sql generation prompt includes:
+the analytical context is what makes short follow-ups work reliably. prompts like `top 5 only`, `only cancelled ones`, or `same but by customer` succeed because the prior sql and result shape are available to the next generation step. without that context, short follow-ups were much less reliable.
 
-- the allowed schema
-- known relationships between tables
-- explicit instructions to return a json object with `sql` and `explanation`
-- constraints to use only the listed tables and columns
-- instructions to stay within sqlite syntax
-- recent chat history
-- recent analytical context from prior turns
+**step 2: answer generation**
 
-the analytical context includes things like:
+| input | detail |
+|---|---|
+| user question | original prompt |
+| conversation | recent turns |
+| analytical context | same context passed to sql generation |
+| sql executed | the actual query that ran |
+| returned rows | real data from sqlite |
+| temperature | 0.3 for more natural phrasing |
 
-- the previous user request
-- the previous sql
-- previous result columns
-- recently referenced entities
+the answer is always generated from real returned rows, not from the llm's internal knowledge.
 
-this was important for follow-up prompts such as:
+### why two steps instead of one
 
-- `top 5 only`
-- `only cancelled ones`
-- `same but by customer`
+separating sql generation from answer generation makes the behavior easier to control and debug. the first step focuses on query correctness. the second focuses on communicating the result clearly. it also means i can inspect the generated sql independently from the final answer, which made development much faster.
 
-without that extra context, short follow-ups were much less reliable.
+### deterministic tracing
 
-### answer generation prompt
+trace-style prompts (`trace the full flow of billing document 90504259`) bypass the llm entirely. the backend detects the trace intent and builds the flow directly from the known o2c join sequence. this returns:
 
-the answer generation prompt receives:
-
-- the user question
-- recent conversation
-- recent analytical context
-- the actual sql that was executed
-- the returned rows
-
-the answer is then generated from those results with instructions to stay concise and grounded in business meaning.
-
-### why i separated sql generation from answer generation
-
-this separation made the behavior easier to control.
-
-- the first step focuses on correctness of the query
-- the second step focuses on communicating the result clearly
-
-it also made debugging easier, because i could inspect the generated sql independently from the final answer.
-
-## deterministic tracing
-
-one issue with relying only on llm-generated sql is that trace-style prompts should feel especially reliable.
-
-for prompts like:
-
-- `trace the full flow of billing document 90504259`
-
-i added a deterministic trace path in the backend.
-
-instead of treating this as just another free-form query, the backend detects the trace intent and builds the flow directly from the known order to cash join sequence.
-
-this returns:
-
-- ordered flow steps
-- found and missing stages
+- ordered flow steps with found and missing stages
 - explicit graph references for each stage
 
-this made tracing feel more like a first-class feature and less like a prompt that might or might not work depending on llm behavior.
+tracing is a first-class feature rather than a prompt that may or may not produce correct sql depending on phrasing.
 
-## conversation memory
+### conversation memory
 
-one bonus area i chose to deepen was conversation memory.
-
-the system now passes more than plain text history between turns. it can also carry:
+the system passes more than plain text history between turns. each turn also carries:
 
 - previous sql
-- previous results
+- previous result columns
 - previous graph references
 
-on the backend, this is reduced into a structured analytical context and fed back into both sql generation and answer generation.
-
-the goal was not to create long-term memory. the goal was to make multi-turn analysis feel coherent inside a single session.
+on the backend this is reduced into a structured analytical context and fed into both prompts. the goal is not long-term memory. the goal is making multi-turn analysis feel coherent inside a single session.
 
 ## guardrails
 
-guardrails were one of the explicit evaluation criteria, so i treated them as a core part of the system rather than an afterthought.
+rule-based, applied before the llm is called. the design is intentionally simple so failure cases are easy to explain and test.
 
-the current approach is rule-based and deliberately simple.
+| prompt | decision | reason |
+|---|---|---|
+| `write me a poem` | rejected | no domain keywords |
+| `what is the weather` | rejected | off-topic pattern match |
+| `who is the president` | rejected | off-topic pattern match |
+| `show me delivered but not billed orders` | allowed | domain keywords present |
+| `trace the full flow of billing document 90504259` | allowed | domain keywords present |
+| `top 5 only` (after valid prior turn) | allowed | prior context establishes o2c domain |
+| `top 5 only` (no prior context) | rejected | no domain keywords and no prior context |
 
-### what the guardrails do
+a lightweight rule-based layer was enough to satisfy the requirement without the unpredictability of routing guardrail decisions through another llm call.
 
-- reject clearly off-topic prompts
-- restrict usage to the provided order to cash dataset and domain
-- allow short follow-up prompts when prior turns clearly establish valid o2c context
-
-examples of prompts the system should reject:
-
-- `write me a poem`
-- `what is the weather`
-- `who is the president`
-
-examples of prompts the system should allow:
-
-- `show me sales orders that were delivered but not billed`
-- `trace the full flow of billing document 90504259`
-- `top 5 only` after a valid analytical question
-
-### why i chose this guardrail design
-
-for this assignment, i wanted the behavior to be easy to explain and easy to test.
-
-a lightweight rule-based layer was enough to satisfy the requirement without overcomplicating the system.
-
-it also makes failure cases easier to reason about compared to trying to solve everything with another llm call.
+`backend/tests/test_guardrails.py` covers all four cases above.
 
 ## result grounding
 
-the system is designed so that responses are grounded in data rather than generated from the llm alone.
+responses are grounded in data rather than generated from llm memory:
 
-that grounding comes from:
+- sql is executed against sqlite and the returned rows are passed to the answer generation step
+- the final answer is generated from those rows, not from the llm's knowledge
+- node references extracted from results are highlighted in the graph
+- deterministic traces resolve every flow step from actual database joins and report missing steps explicitly
 
-- executing generated sql against sqlite
-- building the final answer from real returned rows
-- exposing references back to graph nodes
-- using deterministic traces for flow-style requests
+## verification
 
-this is especially important because the assignment explicitly called out that the system should not behave like a static or hallucinated q&a tool.
-
-## verification and testing
-
-i added lightweight verification in two places.
-
-### query verification
-
-`backend/verify_examples.py` checks dataset-backed examples such as:
-
-- delivered but not billed sales orders
-- a traceable billing document flow
-
-the supporting notes are in:
-
-- `docs/query-verification.md`
-
-### guardrail tests
-
-`backend/tests/test_guardrails.py` covers:
-
-- off-topic rejection
-- valid domain prompt acceptance
-- short follow-up acceptance with prior context
-- short follow-up rejection without context
+| check | file | what it covers |
+|---|---|---|
+| query verification | `backend/verify_examples.py` | delivered-but-not-billed detection, full flow trace |
+| guardrail tests | `backend/tests/test_guardrails.py` | off-topic rejection, valid acceptance, follow-up with and without context |
+| query notes | `docs/query-verification.md` | supporting detail for verified examples |
 
 ## limitations
 
-there are still limitations in the current version.
-
-- most analytical questions still depend on llm-generated sql
-- the graph is primarily used for modeling, visualization, and navigation, not as a general-purpose graph query engine
-- semantic search and hybrid retrieval are not implemented
-- streaming responses are not implemented
-- memory is session-level and recent-turn only
-- some traces are limited by missing downstream records in the source dataset
-
-for example, some billing records contain an `accountingDocument` value in the header table without a matching row in `journal_entries`. in those cases, the trace correctly reports the downstream step as missing because the dataset itself does not contain the required record.
+| limitation | note |
+|---|---|
+| most queries depend on llm-generated sql | correctness is not guaranteed for every prompt |
+| graph is for modeling and visualization only | not a general-purpose graph query engine |
+| memory is session-scoped and recent-turn only | no persistence across sessions |
+| streaming not implemented | full response returned at once |
+| semantic search not implemented | keyword and sql-based only |
+| some traces have missing downstream steps | some billing records reference accounting documents absent from journal_entries. this is a dataset gap, not a code bug. the trace reports those steps as missing correctly. |
 
 ## how to run locally
-
-### backend setup
-
-```powershell
+```bash
+# backend
 cd backend
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate        # mac/linux: source venv/bin/activate
 pip install -r requirements.txt
-```
-
-create a `.env` file in the project root:
-
-```env
-GEMINI_API_KEY=your_key_here
-```
-
-### dataset ingestion
-
-place the dataset under one of these locations:
-
-- `data/sap-order-to-cash-dataset/sap-o2c-data/`
-- `data/sap-o2c-data/`
-
-then run:
-
-```powershell
-cd backend
-python ingest.py
-```
-
-### start the backend
-
-```powershell
-cd backend
+python ingest.py             # dataset must be at data/sap-o2c-data/
 python main.py
-```
 
-### start the frontend
-
-```powershell
+# frontend
 cd frontend
 npm install
-npm.cmd run dev
+npm run dev                  # windows: npm.cmd run dev
 ```
 
-## useful verification commands
+add `GEMINI_API_KEY=your_key_here` to a `.env` file in the project root.
 
-frontend build:
-
-```powershell
-cd frontend
-npm.cmd run build
-```
-
-guardrail tests:
-
-```powershell
+### verification commands
+```bash
+# guardrail tests
 backend\venv\Scripts\python.exe -m unittest discover -s backend\tests -p "test*.py"
-```
 
-query verification:
-
-```powershell
+# query verification
 backend\venv\Scripts\python.exe backend\verify_examples.py
 ```
-
-## closing note
-
-my goal with this submission was not to add as many features as possible. it was to make the core system coherent and defensible.
-
-the main architectural choice was to keep the graph, relational query layer, and llm responsibilities separate enough that each part stays understandable:
-
-- sqlite for structured analytical queries
-- networkx for graph modeling and exploration
-- fastapi for a simple backend boundary
-- react for an interactive graph-plus-chat ui
-- gemini for natural language translation and grounded answer generation
-
-that design let me move quickly while still making deliberate choices around graph modeling, database selection, prompting strategy, and guardrails, which were the main areas the assignment asked me to explain.
